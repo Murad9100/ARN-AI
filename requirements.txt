@@ -1,0 +1,10 @@
+﻿fastapi
+uvicorn
+python-jose[cryptography]
+bcrypt
+pydantic
+httpx
+cryptography
+python-multipart
+pyjwt
+python-dotenv
