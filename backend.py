@@ -1,6 +1,6 @@
 """
 ARN AI — FastAPI Backend (Production Ready)
-Stack: FastAPI + SQLite + JWT + Bcrypt + AES-256 + Gemini AI
+Stack: FastAPI + SQLite + JWT + Bcrypt + AES-256 + Gemini 1.5 Flash
 """
 
 from fastapi import FastAPI, HTTPException, Depends, status, Request
@@ -19,7 +19,7 @@ import httpx
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 
-# Bu faylın mütləq qovluqda olduğundan əmin ol
+# email_verify.py-nın eyni qovluqda olduğundan əmin ol
 from email_verify import (
     run_migration, send_verification_email, send_password_reset_email,
     verify_email_token, verify_reset_token
@@ -31,12 +31,17 @@ ALGORITHM        = "HS256"
 TOKEN_EXPIRE_H   = 24
 AES_KEY          = os.getenv("AES_KEY", "arnai256bitkeyforencryption!!").encode()[:32]
 DB_PATH          = "arn_ai.db"
-GEMINI_API_KEY   = os.getenv("GEMINI_API_KEY", "") # Koyeb-də bunu əlavə et!
+GEMINI_API_KEY   = os.getenv("GEMINI_API_KEY", "")
+
+# ARN AI-ın xarakteri və bilik çərçivəsi
+ARN_SYSTEM_PROMPT = """Sən ARN AI-san — AZTU Cybersecurity departamenti üçün yaradılmış professional Red Team köməkçisi.
+Rolun: CTF tapşırıqları, pentest metodologiyası, CVE analizi, recon texnikaları və şəbəkə təhlükəsizliyi sahəsində peşəkar məsləhətlər verməkdir.
+Dil: Azərbaycan dili. Tonda: Peşəkar, texniki və strukturlu ol. 
+Qeyd: Real hücum kodları (malware/ransomware) vermə, yalnız təhsil və authorized test məqsədli izahlar ver."""
 
 # ─── APP INIT ─────────────────────────────────────────────────────────────────
-app = FastAPI(title="ARN AI API", version="1.1.0")
+app = FastAPI(title="ARN AI API", version="1.2.0")
 
-# CORS AYARI - Vercel linkini bura tam yazdıq
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -146,17 +151,16 @@ async def register(req: RegisterRequest, db: sqlite3.Connection = Depends(get_db
         )
         db.commit()
         user_id = cursor.lastrowid
-        # Email göndərmə
         send_verification_email(user_id, req.username, req.email)
-        return {"message": "Qeydiyyat uğurlu! Emailinizi təsdiqləyin."}
+        return {"message": "Qeydiyyat uğurlu! E-poçtunuzu yoxlayın."}
     except sqlite3.IntegrityError:
-        raise HTTPException(409, "İstifadəçi adı və ya email artıq istifadə olunub.")
+        raise HTTPException(409, "Bu istifadəçi adı və ya e-poçt artıq mövcuddur.")
 
 @app.post("/auth/login")
 async def login(req: LoginRequest, db: sqlite3.Connection = Depends(get_db)):
     user = db.execute("SELECT * FROM users WHERE username = ?", (req.username,)).fetchone()
     if not user or not bcrypt.checkpw(req.password.encode(), user["password_h"].encode()):
-        raise HTTPException(401, "Məlumatlar yanlışdır.")
+        raise HTTPException(401, "İstifadəçi adı və ya şifrə yanlışdır.")
     
     if not user["is_verified"] and not user["is_admin"]:
         raise HTTPException(403, "Zəhmət olmasa əvvəlcə emailinizi təsdiqləyin.")
@@ -166,23 +170,40 @@ async def login(req: LoginRequest, db: sqlite3.Connection = Depends(get_db)):
 
 @app.post("/chat/send")
 async def chat_send(req: dict, token: HTTPAuthorizationCredentials = Depends(security), db: sqlite3.Connection = Depends(get_db)):
-    # JWT Decode
-    payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=[ALGORITHM])
-    user_id = payload["sub"]
+    try:
+        payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id = payload["sub"]
+    except:
+        raise HTTPException(401, "Token etibarsızdır")
     
-    user_msg = req.get("message")
+    user_msg = req.get("message", "").strip()
     session_id = req.get("session_id") or str(uuid.uuid4())
 
-    # Gemini API Call (Sənin AI hissən)
-    if not GEMINI_API_KEY:
-        ai_res = "Sistem: GEMINI_API_KEY Koyeb-də təyin olunmayıb!"
-    else:
-        async with httpx.AsyncClient() as client:
-            # Gemini/Google API strukturu bura gəlir
-            ai_res = f"ARN AI (Beta): Sənin mesajın şifrələndi və bazaya yazıldı: {user_msg}"
+    if not user_msg:
+        raise HTTPException(400, "Mesaj boş ola bilməz")
 
-    # Mesajları şifrələyib bazaya yazmaq
-    db.execute("INSERT OR IGNORE INTO chat_sessions (id, user_id, title) VALUES (?, ?, ?)", (session_id, user_id, user_msg[:30]))
+    # ── Gemini API İnteqrasiyası ──
+    if not GEMINI_API_KEY:
+        ai_res = "Sistem Xətası: Gemini API açarı Koyeb-də tapılmadı."
+    else:
+        async with httpx.AsyncClient(timeout=40.0) as client:
+            gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+            gemini_payload = {
+                "contents": [{"parts": [{"text": f"{ARN_SYSTEM_PROMPT}\n\nİstifadəçi sualı: {user_msg}"}]}]
+            }
+            resp = await client.post(gemini_url, json=gemini_payload)
+            
+            if resp.status_code == 200:
+                result = resp.json()
+                try:
+                    ai_res = result['candidates'][0]['content']['parts'][0]['text']
+                except (KeyError, IndexError):
+                    ai_res = "AI cavab hazırlayarkən daxili xəta baş verdi."
+            else:
+                ai_res = f"AI API xətası (Kod: {resp.status_code}). Zəhmət olmasa bir az sonra yoxlayın."
+
+    # Bazaya qeyd etmə (Şifrəli)
+    db.execute("INSERT OR IGNORE INTO chat_sessions (id, user_id, title) VALUES (?, ?, ?)", (session_id, user_id, user_msg[:40]))
     db.execute("INSERT INTO chat_messages (session_id, role, content_enc) VALUES (?, ?, ?)", (session_id, "user", aes_encrypt(user_msg)))
     db.execute("INSERT INTO chat_messages (session_id, role, content_enc) VALUES (?, ?, ?)", (session_id, "assistant", aes_encrypt(ai_res)))
     db.commit()
@@ -191,4 +212,4 @@ async def chat_send(req: dict, token: HTTPAuthorizationCredentials = Depends(sec
 
 @app.get("/health")
 def health():
-    return {"status": "online", "server": "ARN-AI-Production"}
+    return {"status": "online", "server": "ARN-AI-Production", "version": "1.2.0"}
