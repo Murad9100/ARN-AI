@@ -81,6 +81,83 @@ const S = {
     textTransform: "uppercase",
     transition: "all 0.18s",
   },
+  // ─── AUTH PAGE (Real API Only) ─────────────────────────────────────────────
+function AuthPage({ setView, setUser }) {
+  const [mode, setMode] = useState("login");
+  const [form, setForm] = useState({ username: "", email: "", password: "" });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const up = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }));
+
+  const submit = async () => {
+    if (!form.username || !form.password) return setError("Bütün sahələri doldurun.");
+
+    // 🔒 ADMIN SECRET KEY YOXLANIŞI (Frontend Qatı)
+    const SECRET_ADMIN = "ARN2026"; 
+    if (form.username === "admin" || form.username === "m_safarov") {
+       const key = prompt("Təhlükəsizlik kodunu daxil edin:");
+       if (key !== SECRET_ADMIN) {
+          setError("Admin kodu yanlışdır!");
+          return;
+       }
+    }
+
+    setError(""); setLoading(true);
+
+    try {
+      const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
+      const res = await fetch(`${API_BASE}${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        localStorage.setItem("arn_token", data.access_token);
+        setUser({
+          username: data.user.username,
+          plan: data.user.plan,
+          isAdmin: data.user.is_admin,
+          reqsToday: 0,
+        });
+        setView(data.user.is_admin ? "admin" : "dashboard");
+      } else {
+        setError(data.detail || "Giriş rədd edildi.");
+      }
+    } catch {
+      // ⚠️ BURADA setUser YOXDUR - Backendsiz giriş mümkün deyil!
+      setError("Serverlə əlaqə qurula bilmədi. Backend-i işə salın.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: C.bg }}>
+      <div style={{ ...S.cardRed, width: 380 }}>
+        <ArnLogo size={36} />
+        <div style={{ marginTop: 20 }}>
+          <ErrBox msg={error} />
+          <input placeholder="İSTİFADƏÇİ ADI" style={S.input} value={form.username} onChange={up("username")} />
+          {mode === "register" && <input placeholder="E-POÇT" style={{...S.input, marginTop: 12}} value={form.email} onChange={up("email")} />}
+          <input type="password" placeholder="ŞİFRƏ" style={{...S.input, marginTop: 12}} value={form.password} onChange={up("password")} />
+          
+          <button onClick={submit} disabled={loading} style={{ ...S.btnRed, width: "100%", marginTop: 20 }}>
+            {loading ? "GÖZLƏYİN..." : (mode === "login" ? "DAXİL OL" : "QEYDİYYAT")}
+          </button>
+          
+          <div style={{ textAlign: "center", marginTop: 15 }}>
+            <button onClick={() => setMode(mode === "login" ? "register" : "login")} style={{ background: "none", border: "none", color: C.textDim, cursor: "pointer", fontSize: "11px" }}>
+              {mode === "login" ? "HESABINIZ YOXDUR? QEYDİYYAT" : "ARTIQ HESABINIZ VAR? DAXİL OLUN"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
   // Dark neutral button
   btnDark: {
     background: "#111",
