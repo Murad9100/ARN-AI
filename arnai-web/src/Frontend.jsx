@@ -1564,3 +1564,25 @@ export default function App() {
     </>
   );
 }
+// ... AuthPage və digər komponentlərin bitdiyi yer ...
+
+export default function App() {
+  const [view, setView] = useState("login"); 
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const path = window.location.pathname;
+    if (path === "/verify")         setView("verify");
+    if (path === "/reset-password") setView("reset");
+  }, []);
+
+  return (
+    <div style={{ background: "#050505", minHeight: "100vh", color: "#e8e8e8", fontFamily: "'Barlow', sans-serif" }}>
+       {view === "login"     && <AuthPage setView={setView} setUser={setUser} />}
+       {view === "dashboard" && user && <Dashboard user={user} setUser={setUser} setView={setView} />}
+       {view === "admin"     && <AdminPanel setView={setView} />}
+       {view === "verify"    && <VerifyEmailResult onSuccess={() => setView("login")} />}
+       {view === "reset"     && <ResetPassword onSuccess={() => setView("login")} />}
+    </div>
+  );
+}
