@@ -928,260 +928,77 @@ function Dashboard({ user, setUser, setView }) {
   );
 }
 
-// ─── ADMIN PANEL ──────────────────────────────────────────────────────────────
-function AdminPanel({ setView }) {
-  const [users, setUsers] = useState(MOCK_USERS);
-  const [search, setSearch] = useState("");
-  const [notif, setNotif] = useState("");
-  const [notifSent, setNotifSent] = useState(false);
-  const [tab, setTab] = useState("users");
-  const [apiLoad, setApiLoad] = useState(42);
+// ─── ADMIN PANEL SONU ─────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    const iv = setInterval(() => setApiLoad(prev => Math.max(10, Math.min(95, prev + (Math.random() - 0.5) * 10))), 2000);
-    return () => clearInterval(iv);
-  }, []);
+// ─── AUTH COMPONENTS (DÜZƏLDİLMİŞ VƏ TƏMİZLƏNMİŞ) ──────────────────────────────
 
-  const filtered = users.filter(u => u.username.includes(search) || u.email.includes(search));
-  const sendNotif = () => {
-    if (!notif.trim()) return;
-    setNotifSent(true);
-    setTimeout(() => { setNotifSent(false); setNotif(""); }, 2000);
-  };
-  const toggleBan = (id) => setUsers(prev => prev.map(u => u.id === id ? { ...u, status: u.status === "aktiv" ? "banlı" : "aktiv" } : u));
-  const upgradePlan = (id, plan) => setUsers(prev => prev.map(u => u.id === id ? { ...u, plan } : u));
+/** * QEYD: CenteredPage, AuthLogo və ErrBox funksiyaları faylın yuxarı 
+ * hissələrində artıq təyin edildiyi üçün burada təkrar yazılmır. 
+ * Bu, "Already declared" xətasının qarşısını alır.
+ */
 
-  const TABS = [{ id: "users", l: "İstifadəçilər" }, { id: "notif", l: "Bildiriş" }, { id: "system", l: "Sistem" }];
-  const statsRow = [
-    { l: "Ümumi", v: users.length },
-    { l: "Aktiv", v: users.filter(u => u.status === "aktiv").length },
-    { l: "PRO/MAX", v: users.filter(u => u.plan !== "FREE").length },
-    { l: "Banlı", v: users.filter(u => u.status === "banlı").length },
-  ];
-
-  return (
-    <div style={{ flex: 1, display: "flex", flexDirection: "column", background: C.bg, overflow: "hidden" }}>
-      {/* Header */}
-      <div style={{
-        padding: "14px 28px", borderBottom: `1px solid ${C.border}`,
-        display: "flex", justifyContent: "space-between", alignItems: "center", background: C.surface,
-      }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <ArnLogo size={20} showTag={false} />
-          <span style={{ fontFamily: F.display, color: C.red, fontSize: "11px", letterSpacing: 3, borderLeft: `1px solid #2a2a2a`, paddingLeft: 16, fontWeight: 700 }}>
-            ADMIN PANELİ
-          </span>
-        </div>
-        <button onClick={() => setView("dashboard")} style={{ ...S.btnGhost, fontSize: "10px" }}>← Dashboarda Qayıt</button>
-      </div>
-
-      {/* Stats */}
-      <div style={{ display: "flex", borderBottom: `1px solid ${C.border}` }}>
-        {statsRow.map((s, i) => (
-          <div key={i} style={{
-            flex: 1, padding: "14px 24px", borderRight: `1px solid ${C.border}`, background: "#080808",
-          }}>
-            <div style={{ fontFamily: F.display, fontSize: "26px", fontWeight: 900, color: i === 3 ? C.red : C.text }}>{s.v}</div>
-            <div style={{ fontFamily: F.ui, fontSize: "11px", color: C.textDim, marginTop: 2 }}>{s.l}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Tabs */}
-      <div style={{ display: "flex", borderBottom: `1px solid ${C.border}`, background: "#080808" }}>
-        {TABS.map(t => (
-          <button key={t.id} onClick={() => setTab(t.id)} style={{
-            padding: "11px 22px", background: "none", border: "none",
-            borderBottom: tab === t.id ? `2px solid ${C.red}` : "2px solid transparent",
-            color: tab === t.id ? C.red : C.textDim,
-            cursor: "pointer", fontFamily: F.display, fontWeight: 700, fontSize: "12px", letterSpacing: 1.5,
-          }}>{t.l}</button>
-        ))}
-      </div>
-
-      <div style={{ flex: 1, overflow: "auto", padding: 24 }}>
-        {/* Users Tab */}
-        {tab === "users" && (
-          <>
-            <input
-              value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="İstifadəçi axtar..."
-              style={{ ...S.input, maxWidth: 300, marginBottom: 20 }}
-            />
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  {["İD", "İstifadəçi", "E-poçt", "Plan", "Status", "Sorğular", "Əməliyyat"].map(h => (
-                    <th key={h} style={{
-                      padding: "10px 14px", textAlign: "left",
-                      fontFamily: F.display, fontSize: "10px", color: C.redDim,
-                      letterSpacing: 2, borderBottom: `1px solid ${C.border}`, fontWeight: 700,
-                    }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map(u => (
-                  <tr key={u.id} style={{ borderBottom: `1px solid #0e0e0e` }}>
-                    <td style={{ padding: "10px 14px", fontFamily: F.mono, fontSize: "12px", color: C.textDim }}>{u.id}</td>
-                    <td style={{ padding: "10px 14px", fontFamily: F.ui, fontSize: "13px", color: C.text, fontWeight: 500 }}>{u.username}</td>
-                    <td style={{ padding: "10px 14px", fontFamily: F.ui, fontSize: "12px", color: C.textDim }}>{u.email}</td>
-                    <td style={{ padding: "10px 14px" }}>
-                      <select
-                        value={u.plan} onChange={e => upgradePlan(u.id, e.target.value)}
-                        style={{
-                          background: "#111", border: `1px solid ${C.border2}`, color: planColor(u.plan),
-                          padding: "3px 8px", fontFamily: F.display, fontWeight: 700,
-                          fontSize: "11px", cursor: "pointer", letterSpacing: 1,
-                        }}
-                      >
-                        {["FREE", "PRO", "MAX"].map(p => <option key={p} value={p}>{p}</option>)}
-                      </select>
-                    </td>
-                    <td style={{ padding: "10px 14px" }}>
-                      <span style={{
-                        fontFamily: F.display, fontSize: "10px", fontWeight: 700, letterSpacing: 1.5,
-                        color: u.status === "aktiv" ? C.green : C.red,
-                      }}>{u.status.toUpperCase()}</span>
-                    </td>
-                    <td style={{ padding: "10px 14px", fontFamily: F.mono, fontSize: "12px", color: C.textDim }}>{u.reqs}</td>
-                    <td style={{ padding: "10px 14px" }}>
-                      <button onClick={() => toggleBan(u.id)} style={{
-                        ...S.btnGhost, fontSize: "10px", padding: "3px 10px",
-                        color: u.status === "aktiv" ? C.red : C.green,
-                        borderColor: u.status === "aktiv" ? C.red : C.green,
-                      }}>
-                        {u.status === "aktiv" ? "BANLA" : "AÇIQL"}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </>
-        )}
-
-        {/* Notification Tab */}
-        {tab === "notif" && (
-          <div style={{ maxWidth: 520 }}>
-            <h3 style={{ fontFamily: F.display, color: C.red, fontSize: "14px", letterSpacing: 2, marginBottom: 20, fontWeight: 700 }}>
-              QLOBAL BİLDİRİŞ GÖNDƏR
-            </h3>
-            <div style={{ ...S.card, marginBottom: 16 }}>
-              <p style={{ fontFamily: F.ui, fontSize: "13px", color: C.textDim, marginBottom: 12 }}>
-                Bu bildiriş bütün aktiv istifadəçilərə göndəriləcək.
-              </p>
-              <textarea
-                value={notif} onChange={e => setNotif(e.target.value)}
-                placeholder="Bildiriş mətni..."
-                rows={4}
-                style={{ ...S.input, marginBottom: 12 }}
-              />
-              <div style={{ display: "flex", gap: 10 }}>
-                <select style={{ ...S.input, width: "auto", flex: 1, fontFamily: F.ui }}>
-                  <option>Adi Bildiriş</option>
-                  <option>Xəbərdarlıq</option>
-                  <option>KRİTİK XƏBƏR</option>
-                </select>
-                <button onClick={sendNotif} style={S.btnRed}>
-                  {notifSent ? "✓ GÖNDƏRİLDİ" : "GÖNDƏR"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* System Tab */}
-        {tab === "system" && (
-          <div style={{ maxWidth: 640 }}>
-            <h3 style={{ fontFamily: F.display, color: C.red, fontSize: "14px", letterSpacing: 2, marginBottom: 20, fontWeight: 700 }}>
-              SİSTEM MONİTORİNQİ
-            </h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              {[
-                { l: "API Gecikmə", v: "42ms", ok: true },
-                { l: "DB Yük", v: `${apiLoad.toFixed(0)}%`, ok: apiLoad < 80 },
-                { l: "Aktiv Sessiya", v: "3", ok: true },
-                { l: "Günlük Sorğu", v: "631", ok: true },
-                { l: "Uptime", v: "99.7%", ok: true },
-                { l: "Cache Hit", v: "87%", ok: true },
-              ].map(m => (
-                <div key={m.l} style={{ ...S.card, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontFamily: F.ui, fontSize: "12px", color: C.textDim }}>{m.l}</span>
-                  <span style={{ fontFamily: F.mono, fontSize: "20px", fontWeight: 700, color: m.ok ? C.green : C.red }}>{m.v}</span>
-                </div>
-              ))}
-            </div>
-            <div style={{ ...S.card, marginTop: 16 }}>
-              <div style={{ fontFamily: F.ui, fontSize: "11px", color: C.textDim, marginBottom: 10 }}>DB YÜK QRAFİKİ</div>
-              <div style={{ height: 60, display: "flex", alignItems: "flex-end", gap: 3 }}>
-                {Array.from({ length: 32 }, () => Math.random() * 80 + 10).map((h, i) => (
-                  <div key={i} style={{ flex: 1, height: `${h}%`, background: h > 80 ? C.red : h > 60 ? C.yellow : "#222", transition: "height 0.3s" }} />
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ─── AUTH COMPONENTS (Email Verify inteqrasiyası) ──────────────────────────────
-
-// Centred wrapper
-function CenteredPage({ children }) {
-  return (
-    <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", background: C.bg, minHeight: "100vh", position: "relative" }}>
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse at 50% 50%, rgba(255,0,51,0.04) 0%, transparent 70%)", pointerEvents: "none" }} />
-      {children}
-    </div>
-  );
-}
-
-// Auth card wrapper
+// Auth card wrapper - Bu komponent yuxarıda yoxdursa saxla
 function AuthCard({ children, width = 420 }) {
   return (
-    <div style={{ width, ...S.cardRed, position: "relative", zIndex: 1 }}>
+    <div style={{ 
+      width, 
+      ...S.cardRed, 
+      position: "relative", 
+      zIndex: 1,
+      margin: "0 auto" 
+    }}>
       {children}
     </div>
   );
 }
 
-// Auth logo header
-function AuthLogo({ subtitle }) {
-  return (
-    <div style={{ textAlign: "center", marginBottom: 36 }}>
-      <ArnLogo size={52} />
-      {subtitle && (
-        <p style={{ fontFamily: F.display, fontSize: "10px", color: C.textDim, letterSpacing: 3, marginTop: 12, fontWeight: 600 }}>
-          {subtitle}
-        </p>
-      )}
-    </div>
-  );
-}
-
-// Error box
-function ErrBox({ msg }) {
-  if (!msg) return null;
-  return (
-    <div style={{ background: "rgba(255,0,51,0.08)", border: `1px solid ${C.red}`, color: C.red, padding: "10px 14px", fontFamily: F.ui, fontSize: "13px", marginBottom: 16, borderLeft: `3px solid ${C.red}` }}>
-      {msg}
-    </div>
-  );
-}
-
-// Success box
+// Success box - Qeydiyyat və ya şifrə yeniləmə uğurlu olanda görünür
 function OkBox({ msg }) {
   if (!msg) return null;
   return (
-    <div style={{ background: "rgba(0,255,65,0.06)", border: `1px solid ${C.green}`, color: C.green, padding: "10px 14px", fontFamily: F.ui, fontSize: "13px", marginBottom: 16 }}>
-      ✓ {msg}
+    <div style={{ 
+      background: "rgba(0,255,65,0.06)", 
+      border: `1px solid ${C.green}`, 
+      color: C.green, 
+      padding: "10px 14px", 
+      fontFamily: F.ui, 
+      fontSize: "13px", 
+      marginBottom: 16,
+      borderLeft: `3px solid ${C.green}`
+    }}>
+      ✓ {msg.toUpperCase()}
     </div>
   );
 }
 
+// ─── ADDITIONAL AUTH HELPERS ──────────────────────────────────────────────────
+
+function AuthInput({ label, value, onChange, type = "text", placeholder }) {
+  return (
+    <div style={{ marginBottom: 16 }}>
+      <label style={{ 
+        fontFamily: F.display, 
+        fontSize: "10px", 
+        color: C.textDim, 
+        letterSpacing: 2.5, 
+        display: "block", 
+        marginBottom: 6, 
+        fontWeight: 600 
+      }}>
+        {label.toUpperCase()}
+      </label>
+      <input 
+        type={type} 
+        value={value} 
+        onChange={onChange} 
+        style={S.input} 
+        placeholder={placeholder} 
+      />
+    </div>
+  );
+}
+
+// ─── NEXT COMPONENT START ─────────────────────────────────────────────────────
 // ─── VERIFY EMAIL PENDING ─────────────────────────────────────────────────────
 function VerifyEmailPending({ email, onBack }) {
   const [resending, setResending] = useState(false);
