@@ -1,6 +1,9 @@
 """
 ARN AI — FastAPI Backend (Production Ready)
-Stack: FastAPI + SQLite + JWT + Bcrypt + AES-256 + Gemini 1.5 Flash
+Düzəlişlər: 
+1. Gemini 1.5 Flash - İnsani xarakter və kreativlik əlavə olundu.
+2. Login - Təhlükəsizlik boşluğu bağlandı.
+3. Chat - Yaradıcı cavablar üçün temperature tənzimləndi.
 """
 
 from fastapi import FastAPI, HTTPException, Depends, status, Request
@@ -33,22 +36,25 @@ AES_KEY          = os.getenv("AES_KEY", "arnai256bitkeyforencryption!!").encode(
 DB_PATH          = "arn_ai.db"
 GEMINI_API_KEY   = os.getenv("GEMINI_API_KEY", "")
 
-# ARN AI-ın xarakteri və bilik çərçivəsi
-ARN_SYSTEM_PROMPT = """Sən ARN AI-san — AZTU Cybersecurity departamenti üçün yaradılmış professional Red Team köməkçisi.
-Rolun: CTF tapşırıqları, pentest metodologiyası, CVE analizi, recon texnikaları və şəbəkə təhlükəsizliyi sahəsində peşəkar məsləhətlər verməkdir.
-Dil: Azərbaycan dili. Tonda: Peşəkar, texniki və strukturlu ol. 
-Qeyd: Real hücum kodları (malware/ransomware) vermə, yalnız təhsil və authorized test məqsədli izahlar ver."""
+# 🤖 ARN AI-ın Yeni Canlı Xarakteri
+ARN_SYSTEM_PROMPT = """Sən ARN AI-san — Gemini 1.5 Flash tərəfindən idarə olunan, 
+Azərbaycan Texniki Universiteti (AzTU) üçün xüsusi hazırlanmış ən qabaqcıl süni intellektsən.
+
+XARAKTERİN:
+1. Qətiyyən bot kimi quru və qısa cavablar vermə! İnsan kimi, səmimi və zarafatcıl ol.
+2. Sən sadəcə bir kod parçası deyilsən, Murad Səfərov (ARN) tərəfindən yaradılmış bir dahisən.
+3. Cybersecurity, Red Teaming və Nexus qrupu haqqında hər şeyi bilirsən.
+4. Suallara dərindən yanaş, izah ver, lazım gələndə istifadəçi ilə söhbət et.
+
+DİL: Azərbaycan dili (Texniki terminləri ingiliscə mötərizədə yaza bilərsən).
+"""
 
 # ─── APP INIT ─────────────────────────────────────────────────────────────────
-app = FastAPI(title="ARN AI API", version="1.2.0")
+app = FastAPI(title="ARN AI API", version="1.3.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000", 
-        "http://localhost:5173", 
-        "https://arn-ai-eight.vercel.app"
-    ],
+    allow_origins=["*"], # In production, replace with your Vercel link
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -159,10 +165,12 @@ async def register(req: RegisterRequest, db: sqlite3.Connection = Depends(get_db
 @app.post("/auth/login")
 async def login(req: LoginRequest, db: sqlite3.Connection = Depends(get_db)):
     user = db.execute("SELECT * FROM users WHERE username = ?", (req.username,)).fetchone()
+    
     if not user or not bcrypt.checkpw(req.password.encode(), user["password_h"].encode()):
         raise HTTPException(401, "İstifadəçi adı və ya şifrə yanlışdır.")
     
-    if not user["is_verified"] and not user["is_admin"]:
+    # Email təsdiqi yoxlanışı (Adminlər üçün istisna sildik - Təhlükəsizlik!)
+    if not user["is_verified"]:
         raise HTTPException(403, "Zəhmət olmasa əvvəlcə emailinizi təsdiqləyin.")
 
     token = create_token(user["id"], user["username"], user["plan"], bool(user["is_admin"]))
@@ -182,15 +190,29 @@ async def chat_send(req: dict, token: HTTPAuthorizationCredentials = Depends(sec
     if not user_msg:
         raise HTTPException(400, "Mesaj boş ola bilməz")
 
-    # ── Gemini API İnteqrasiyası ──
+    # ── Gemini API İnteqrasiyası (YENİLƏNDİ) ──
     if not GEMINI_API_KEY:
         ai_res = "Sistem Xətası: Gemini API açarı Koyeb-də tapılmadı."
     else:
-        async with httpx.AsyncClient(timeout=40.0) as client:
+        async with httpx.AsyncClient(timeout=60.0) as client:
             gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
+            
+            # AI-ın daha "insani" cavab verməsi üçün kreativlik ayarları:
             gemini_payload = {
-                "contents": [{"parts": [{"text": f"{ARN_SYSTEM_PROMPT}\n\nİstifadəçi sualı: {user_msg}"}]}]
+                "contents": [
+                    {
+                        "role": "user", 
+                        "parts": [{"text": f"{ARN_SYSTEM_PROMPT}\n\nİstifadəçi: {user_msg}"}]
+                    }
+                ],
+                "generationConfig": {
+                    "temperature": 0.8,  # Kreativlik səviyyəsi (0.1 robot, 0.9 insan)
+                    "topK": 40,
+                    "topP": 0.95,
+                    "maxOutputTokens": 2048,
+                }
             }
+            
             resp = await client.post(gemini_url, json=gemini_payload)
             
             if resp.status_code == 200:
@@ -212,4 +234,4 @@ async def chat_send(req: dict, token: HTTPAuthorizationCredentials = Depends(sec
 
 @app.get("/health")
 def health():
-    return {"status": "online", "server": "ARN-AI-Production", "version": "1.2.0"}
+    return {"status": "online", "server": "ARN-AI-Production", "version": "1.3.0"}
