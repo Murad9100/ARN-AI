@@ -8,7 +8,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const API_BASE = "http://localhost:8000";
+const API_BASE = "https://ill-madelyn-arnai-ce79d1d6.koyeb.app";
 
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
 const C = {
