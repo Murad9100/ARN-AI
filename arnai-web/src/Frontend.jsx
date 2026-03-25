@@ -1625,12 +1625,13 @@ function AuthPage({ setView, setUser }) {
       
 
 // ─── APP ROOT ─────────────────────────────────────────────────────────────────
-export default function App() {
-  const [view, setView] = useState("login"); // login | dashboard | admin | verify | reset
-  const [user, setUser] = useState(null);
+// Faylın ən sonuna bunları əlavə et (əvvəlki App funksiyasını sil)
 
-  // URL-based routing for email verify & password reset
-  useEffect(() => {
+function App() {
+  const [view, setView] = React.useState("login"); 
+  const [user, setUser] = React.useState(null);
+
+  React.useEffect(() => {
     const path = window.location.pathname;
     if (path === "/verify")         setView("verify");
     if (path === "/reset-password") setView("reset");
@@ -1640,55 +1641,26 @@ export default function App() {
     <>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@400;600;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap');
-
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         ::-webkit-scrollbar { width: 4px; height: 4px; }
         ::-webkit-scrollbar-track { background: #0a0a0a; }
         ::-webkit-scrollbar-thumb { background: #1e1e1e; border-radius: 2px; }
         ::-webkit-scrollbar-thumb:hover { background: #ff0033; }
-
-        @keyframes glitch {
-          0%,88%,100% { clip-path: none; transform: none; }
-          90% { clip-path: inset(10% 0 80% 0); transform: translateX(-3px); }
-          93% { clip-path: inset(60% 0 20% 0); transform: translateX(3px); }
-          96% { clip-path: inset(30% 0 50% 0); transform: translateX(-2px); }
-        }
+        @keyframes glitch { 0%,88%,100% { clip-path: none; transform: none; } 90% { clip-path: inset(10% 0 80% 0); transform: translateX(-3px); } 93% { clip-path: inset(60% 0 20% 0); transform: translateX(3px); } 96% { clip-path: inset(30% 0 50% 0); transform: translateX(-2px); } }
         .arn-glitch { position: relative; display: inline-block; }
-        .arn-glitch::before, .arn-glitch::after {
-          content: attr(data-text);
-          position: absolute; top: 0; left: 0;
-          font-family: inherit; font-size: inherit; font-weight: inherit;
-        }
-        .arn-glitch::before {
-          animation: glitch 6s infinite;
-          color: #00ffff; text-shadow: -2px 0 #00ffff; opacity: 0.5;
-        }
-        .arn-glitch::after {
-          animation: glitch 6s infinite 0.15s reverse;
-          color: #ff0033; text-shadow: 2px 0 #ff0033; opacity: 0.4;
-        }
-
+        .arn-glitch::before, .arn-glitch::after { content: attr(data-text); position: absolute; top: 0; left: 0; font-family: inherit; font-size: inherit; font-weight: inherit; }
+        .arn-glitch::before { animation: glitch 6s infinite; color: #00ffff; text-shadow: -2px 0 #00ffff; opacity: 0.5; }
+        .arn-glitch::after { animation: glitch 6s infinite 0.15s reverse; color: #ff0033; text-shadow: 2px 0 #ff0033; opacity: 0.4; }
         @keyframes scroll-left { from { transform: translateX(100%); } to { transform: translateX(-100%); } }
         .cve-scroll { animation: scroll-left 22s linear infinite; display: inline-block; }
-
         @keyframes blink { 50% { opacity: 0; } }
         .typing-dots::after { content: "..."; animation: blink 1.2s infinite; }
-
         @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .fade-in { animation: fadeIn 0.25s ease forwards; }
       `}</style>
 
-      <div style={{
-        background: "#050505", minHeight: "100vh", color: "#e8e8e8",
-        fontFamily: "'Barlow', sans-serif", position: "relative", overflow: "hidden",
-      }}>
-        {/* Scanline overlay */}
-        <div style={{
-          position: "fixed", top: 0, left: 0, width: "100%", height: "100%",
-          pointerEvents: "none", zIndex: 9999,
-          background: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.02) 2px, rgba(0,0,0,0.02) 4px)",
-        }} />
-
+      <div style={{ background: "#050505", minHeight: "100vh", color: "#e8e8e8", fontFamily: "'Barlow', sans-serif", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", pointerEvents: "none", zIndex: 9999, background: "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.02) 2px, rgba(0,0,0,0.02) 4px)" }} />
         <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
           {view === "login"     && <AuthPage setView={setView} setUser={setUser} />}
           {view === "dashboard" && user && <Dashboard user={user} setUser={setUser} setView={setView} />}
@@ -1700,3 +1672,5 @@ export default function App() {
     </>
   );
 }
+
+export default App; // <-- Bunu mütləq faylın ən sonuna yaz!
