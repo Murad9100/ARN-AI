@@ -1458,7 +1458,6 @@ function ResetPassword({ onSuccess }) {
 }
 
 // ─── AUTH PAGE (Login + Register) ─────────────────────────────────────────────
-// ─── AUTH PAGE (Real Login & Register - Təmizlənmiş) ──────────────────────────
 function AuthPage({ setView, setUser }) {
   const [mode, setMode] = useState("login");      // login | register
   const [subView, setSubView] = useState("main"); // main | forgot | pending
@@ -1474,26 +1473,30 @@ function AuthPage({ setView, setUser }) {
 
   const submit = async () => {
     if (!form.username || !form.password) {
-      setError("İstifadəçi adı və şifrə mütləqdir.");
+      setError("Bütün sahələri doldurun.");
       return;
+    }
+
+    // 🔒 ADMIN SECRET KEY YOXLANIŞI
+    const ADMIN_SECRET = "ARN2026"; 
+    if (form.username === "admin" || form.username === "m_safarov") {
+       const secretInput = prompt("Təhlükəsizlik kodunu daxil edin:");
+       if (secretInput !== ADMIN_SECRET) {
+          setError("Təhlükəsizlik kodu yanlışdır!");
+          return;
+       }
     }
 
     setError(""); 
     setLoading(true);
 
     const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
-    
     try {
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          username: form.username, 
-          email: mode === "register" ? form.email : undefined, 
-          password: form.password 
-        }),
+        body: JSON.stringify({ username: form.username, email: form.email, password: form.password }),
       });
-      
       const data = await res.json();
 
       if (res.ok) {
@@ -1501,7 +1504,6 @@ function AuthPage({ setView, setUser }) {
           setPendingEmail(form.email);
           setSubView("pending");
         } else {
-          // Real Giriş Uğurludur
           localStorage.setItem("arn_token", data.access_token);
           setUser({
             username: data.user.username,
@@ -1512,10 +1514,11 @@ function AuthPage({ setView, setUser }) {
           setView(data.user.is_admin ? "admin" : "dashboard");
         }
       } else {
-        setError(data.detail || "Giriş rədd edildi.");
+        setError(data.detail || "Xəta baş verdi");
       }
-    } catch (err) {
-      setError("Serverlə əlaqə qurula bilmədi. Koyeb API-nı yoxlayın.");
+    } catch {
+      // Backend bağlıdırsa və ya xəta varsa, artıq MOCK-a keçmirik.
+      setError("Serverlə əlaqə kəsildi. Koyeb backendini yoxlayın.");
     } finally {
       setLoading(false);
     }
@@ -1529,14 +1532,59 @@ function AuthPage({ setView, setUser }) {
         <ErrBox msg={error} />
 
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {/* Username */}
           <div>
             <label style={{ fontFamily: F.display, fontSize: "10px", color: C.textDim, letterSpacing: 2.5, display: "block", marginBottom: 6, fontWeight: 600 }}>
               İSTİFADƏÇİ ADI
             </label>
-            <input value={form.username} onChange={up("username")} style={S.input} placeholder="m_seferov" />
+            <input value={form.username} onChange={up("username")} style={S.input} placeholder="username" />
           </div>
 
+          {mode === "register" && (
+            <div>
+              <label style={{ fontFamily: F.display, fontSize: "10px", color: C.textDim, letterSpacing: 2.5, display: "block", marginBottom: 6, fontWeight: 600 }}>
+                E-POÇT
+              </label>
+              <input type="email" value={form.email} onChange={up("email")} style={S.input} placeholder="email@aztu.edu.az" />
+            </div>
+          )}
+
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+              <label style={{ fontFamily: F.display, fontSize: "10px", color: C.textDim, letterSpacing: 2.5, fontWeight: 600 }}>
+                ŞİFRƏ
+              </label>
+              {mode === "login" && (
+                <button onClick={() => setSubView("forgot")} style={{
+                  background: "none", border: "none", color: C.redDim, cursor: "pointer",
+                  fontFamily: F.ui, fontSize: "11px",
+                }}>Şifrəni unutdum?</button>
+              )}
+            </div>
+            <input
+              type="password" value={form.password} onChange={up("password")}
+              onKeyDown={e => e.key === "Enter" && submit()}
+              style={S.input} placeholder="••••••••"
+            />
+          </div>
+
+          <button onClick={submit} disabled={loading} style={{ ...S.btnRed, textAlign: "center", marginTop: 6, opacity: loading ? 0.7 : 1, width: "100%" }}>
+            {loading ? "YOXLANILlR..." : mode === "login" ? "DAXİL OL" : "QEYDIYYAT"}
+          </button>
+        </div>
+
+        <div style={{ textAlign: "center", marginTop: 22 }}>
+          <button onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }} style={{
+            background: "none", border: "none", color: C.redDim, cursor: "pointer",
+            fontFamily: F.ui, fontSize: "12px", letterSpacing: 0.3,
+          }}>
+            {mode === "login" ? "Hesabınız yoxdur? Qeydiyyat →" : "Artıq hesabınız var? Daxil olun →"}
+          </button>
+        </div>
+        {/* DEMO DÜYMƏLƏRİ TAMAMİLE SİLİNDİ */}
+      </div>
+    </CenteredPage>
+  );
+}
           {/* Email (Sadece Qeydiyyatda) */}
           {mode === "register" && (
             <div>
