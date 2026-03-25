@@ -109,14 +109,6 @@ const MOCK_THREATS = [
   { id: 6, level: "ORTA",   msg: "CVE-2025-4489 · Node.js Prototype Pollution",  time: "02:33", country: "US" },
 ];
 
-const MOCK_USERS = [
-  { id: 1, username: "m_safarov",   email: "m@aztu.edu.az", plan: "PRO",  status: "aktiv", reqs: 142 },
-  { id: 2, username: "r_bekiyev",   email: "r@mail.az",     plan: "MAX",  status: "aktiv", reqs: 399 },
-  { id: 3, username: "test_user_1", email: "t1@mail.az",    plan: "FREE", status: "aktiv", reqs: 3   },
-  { id: 4, username: "hacker_x",    email: "hx@dark.az",    plan: "FREE", status: "banlı", reqs: 0   },
-  { id: 5, username: "aytac_h",     email: "a@aztu.edu.az", plan: "PRO",  status: "aktiv", reqs: 87  },
-];
-
 const INITIAL_HISTORY = [
   {
     id: "h1",
