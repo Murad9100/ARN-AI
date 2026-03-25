@@ -8,8 +8,22 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
+// 1. API linkini bura yapışdır (axırda / olmasın)
 const API_BASE = "https://ill-madelyn-arnai-ce79d1d6.koyeb.app";
 
+// 2. Mesaj göndərmə funksiyasında fetch-i belə yaz:
+const response = await fetch(`${API_BASE}/chat/send`, {
+    method: "POST",
+    headers: {
+        "Content-Type": "application/json",
+        // Əgər login sistemi istifadə edirsənsə, bura Token əlavə et:
+        // "Authorization": `Bearer ${your_token_here}`
+    },
+    body: JSON.stringify({
+        message: userInput, // Sənin yazdığın mesaj
+        tool: "chat"
+    }),
+});
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
 const C = {
   bg:       "#050505",
