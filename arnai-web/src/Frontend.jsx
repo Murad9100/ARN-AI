@@ -1519,7 +1519,6 @@ function AuthPage({ setView, setUser }) {
 
   const submit = async () => {
     setError(""); setLoading(true);
-
     const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
     try {
       const res = await fetch(`${API_BASE}${endpoint}`, {
@@ -1549,7 +1548,7 @@ function AuthPage({ setView, setUser }) {
         return;
       }
     } catch {
-      // Mock auth fallback (no backend running)
+      // Mock auth fallback (backend offline olsa belə işləsin deyə)
       await new Promise(r => setTimeout(r, 800));
       if (!form.username || !form.password) { setError("Bütün sahələri doldurun."); setLoading(false); return; }
       if (mode === "register" && form.password.length < 6) { setError("Şifrə ən az 6 simvol olmalıdır."); setLoading(false); return; }
@@ -1557,7 +1556,6 @@ function AuthPage({ setView, setUser }) {
       setUser({ username: form.username, plan: isAdmin ? "MAX" : "FREE", isAdmin, reqsToday: 0 });
       setView(isAdmin && form.username === "admin" ? "admin" : "dashboard");
     }
-
     setLoading(false);
   };
 
@@ -1565,19 +1563,14 @@ function AuthPage({ setView, setUser }) {
     <CenteredPage>
       <div style={{ width: 420, padding: "44px 40px", ...S.cardRed, position: "relative", zIndex: 1 }}>
         <AuthLogo subtitle={mode === "login" ? "SİSTEMƏ DAXİL OLUN" : "HESAB YARADINIZ"} />
-
         <ErrBox msg={error} />
-
         <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          {/* Username */}
           <div>
             <label style={{ fontFamily: F.display, fontSize: "10px", color: C.textDim, letterSpacing: 2.5, display: "block", marginBottom: 6, fontWeight: 600 }}>
               İSTİFADƏÇİ ADI
             </label>
             <input value={form.username} onChange={up("username")} style={S.input} placeholder="username" />
           </div>
-
-          {/* Email (register only) */}
           {mode === "register" && (
             <div>
               <label style={{ fontFamily: F.display, fontSize: "10px", color: C.textDim, letterSpacing: 2.5, display: "block", marginBottom: 6, fontWeight: 600 }}>
@@ -1586,52 +1579,37 @@ function AuthPage({ setView, setUser }) {
               <input type="email" value={form.email} onChange={up("email")} style={S.input} placeholder="email@aztu.edu.az" />
             </div>
           )}
-
-          {/* Password */}
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
               <label style={{ fontFamily: F.display, fontSize: "10px", color: C.textDim, letterSpacing: 2.5, fontWeight: 600 }}>
                 ŞİFRƏ
               </label>
               {mode === "login" && (
-                <button onClick={() => setSubView("forgot")} style={{
-                  background: "none", border: "none", color: C.redDim, cursor: "pointer",
-                  fontFamily: F.ui, fontSize: "11px",
-                }}>Şifrəni unutdum?</button>
+                <button onClick={() => setSubView("forgot")} style={{ background: "none", border: "none", color: C.redDim, cursor: "pointer", fontFamily: F.ui, fontSize: "11px" }}>Şifrəni unutdum?</button>
               )}
             </div>
-            <input
-              type="password" value={form.password} onChange={up("password")}
-              onKeyDown={e => e.key === "Enter" && submit()}
-              style={S.input} placeholder="••••••••"
-            />
+            <input type="password" value={form.password} onChange={up("password")} onKeyDown={e => e.key === "Enter" && submit()} style={S.input} placeholder="••••••••" />
           </div>
-
           <button onClick={submit} disabled={loading} style={{ ...S.btnRed, textAlign: "center", marginTop: 6, opacity: loading ? 0.7 : 1, width: "100%" }}>
             {loading ? "YOXLANILlR..." : mode === "login" ? "DAXİL OL" : "QEYDIYYAT"}
           </button>
         </div>
-
-        {/* Mode toggle */}
         <div style={{ textAlign: "center", marginTop: 22 }}>
-          <button onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }} style={{
-            background: "none", border: "none", color: C.redDim, cursor: "pointer",
-            fontFamily: F.ui, fontSize: "12px", letterSpacing: 0.3,
-          }}>
+          <button onClick={() => { setMode(mode === "login" ? "register" : "login"); setError(""); }} style={{ background: "none", border: "none", color: C.redDim, cursor: "pointer", fontFamily: F.ui, fontSize: "12px", letterSpacing: 0.3 }}>
             {mode === "login" ? "Hesabınız yoxdur? Qeydiyyat →" : "Artıq hesabınız var? Daxil olun →"}
           </button>
         </div>
+      </div>
+    </CenteredPage>
+  );
+}
 
-      
+// ─── APP ROOT (NEXUS OS) ──────────────────────────────────────────────────────
+export default function App() {
+  const [view, setView] = useState("login"); // login | dashboard | admin | verify | reset
+  const [user, setUser] = useState(null);
 
-// ─── APP ROOT ─────────────────────────────────────────────────────────────────
-// Faylın ən sonuna bunları əlavə et (əvvəlki App funksiyasını sil)
-
-function App() {
-  const [view, setView] = React.useState("login"); 
-  const [user, setUser] = React.useState(null);
-
-  React.useEffect(() => {
+  useEffect(() => {
     const path = window.location.pathname;
     if (path === "/verify")         setView("verify");
     if (path === "/reset-password") setView("reset");
@@ -1672,5 +1650,3 @@ function App() {
     </>
   );
 }
-
-export default App; // <-- Bunu mütləq faylın ən sonuna yaz!
