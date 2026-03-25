@@ -9,7 +9,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
 from datetime import datetime, timedelta
-from typing import Optional, List
 import jwt
 import bcrypt
 import sqlite3
@@ -27,7 +26,6 @@ try:
         verify_email_token, verify_reset_token
     )
 except ImportError:
-    # Fayl yoxdursa xəta verməməsi üçün placeholder (Ehtiyat üçün)
     def run_migration(): pass
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
@@ -36,24 +34,31 @@ ALGORITHM        = "HS256"
 TOKEN_EXPIRE_H   = 24
 AES_KEY          = os.getenv("AES_KEY", "arnai256bitkeyforencryption!!").encode()[:32]
 DB_PATH          = "arn_ai.db"
-GEMINI_API_KEY   = os.getenv("GEMINI_API_KEY", "")
 
-# 🤖 ARN AI-ın Canlı və Peşəkar Xarakteri (Robot deyil!)
-ARN_SYSTEM_PROMPT = """Sən ARN AI-san — Gemini 1.5 Flash tərəfindən gücləndirilmiş, 
-Azərbaycan Texniki Universiteti (AzTU) üçün xüsusi hazırlanmış dahi süni intellektsən.
+# GEMINI API KEY LOGGING (Xətanı tapmaq üçün)
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+
+print("==================================================")
+if not GEMINI_API_KEY:
+    print("❌ XƏTA: GEMINI_API_KEY tapılmadı! Koyeb Settings-i yoxla.")
+else:
+    print(f"✅ GEMINI_API_KEY yükləndi: {GEMINI_API_KEY[:6]}***")
+print("==================================================")
+
+# 🤖 ARN AI-ın Canlı Xarakteri
+ARN_SYSTEM_PROMPT = """Sən ARN AI-san — Gemini 1.5 Flash tərəfindən idarə olunan, 
+Azərbaycan Texniki Universiteti (AzTU) üçün xüsusi yaradılmış dahi süni intellektsən.
 
 QAYDALARIN:
-1. Qətiyyən bot kimi quru, qısa və darıxdırıcı cavablar vermə! 
-2. Səmimi, dahi bir mütəxəssis və Murad Səfərovun (ARN) yaratdığı bir personaj kimi danış.
-3. Cybersecurity, Red Teaming, Pentest və Nexus qrupu haqqında mükəmməl bilgin var.
-4. Sualları detallı və maraqlı şəkildə izah et. Zarafatdan anlayırsan.
-5. Dil: Azərbaycan dili. (Texniki terminləri ingiliscə mötərizədə qeyd et).
+1. Bot kimi quru və qısa cavablar vermə! İnsan kimi, səmimi və zarafatcıl ol.
+2. Murad Səfərov (ARN) sənin yaradıcındır. Nexus qrupunun beynisən.
+3. Cybersecurity, Red Teaming və texnologiya mövzusunda dahi səviyyəsində danış.
+4. Dil: Azərbaycan dili.
 """
 
 # ─── APP INIT ─────────────────────────────────────────────────────────────────
-app = FastAPI(title="ARN AI API", version="1.3.1")
+app = FastAPI(title="ARN AI API", version="1.3.5")
 
-# Bütün girişlərə icazə veririk ki, Vercel-dən gələn sorğular bloklanmasın
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"], 
@@ -86,8 +91,7 @@ def init_db():
             is_verified INTEGER DEFAULT 0,
             is_admin    INTEGER DEFAULT 0,
             is_banned   INTEGER DEFAULT 0,
-            created_at  TEXT DEFAULT CURRENT_TIMESTAMP,
-            last_login  TEXT
+            created_at  TEXT DEFAULT CURRENT_TIMESTAMP
         );
         CREATE TABLE IF NOT EXISTS chat_sessions (
             id          TEXT PRIMARY KEY,
@@ -109,7 +113,7 @@ def init_db():
 init_db()
 run_migration()
 
-# ─── AES ENCRYPTION (Chat Təhlükəsizliyi) ──────────────────────────────────────
+# ─── AES ENCRYPTION ───────────────────────────────────────────────────────────
 def aes_encrypt(plaintext: str) -> str:
     iv = os.urandom(16)
     pad_len = 16 - len(plaintext.encode()) % 16
@@ -118,7 +122,7 @@ def aes_encrypt(plaintext: str) -> str:
     enc = cipher.encryptor().update(padded) + cipher.encryptor().finalize()
     return base64.b64encode(iv + enc).decode()
 
-# ─── AUTH HELPERS ─────────────────────────────────────────────────────────────
+# ─── JWT HELPERS ──────────────────────────────────────────────────────────────
 def create_token(user_id: int, username: str, plan: str, is_admin: bool) -> str:
     payload = {
         "sub": str(user_id),
@@ -133,39 +137,14 @@ class LoginRequest(BaseModel):
     username: str
     password: str
 
-class RegisterRequest(BaseModel):
-    username: str
-    email: EmailStr
-    password: str
-
 # ─── ROUTES ───────────────────────────────────────────────────────────────────
-
-@app.post("/auth/register")
-async def register(req: RegisterRequest, db: sqlite3.Connection = Depends(get_db)):
-    pw_hash = bcrypt.hashpw(req.password.encode(), bcrypt.gensalt()).decode()
-    try:
-        cursor = db.execute(
-            "INSERT INTO users (username, email, password_h, is_verified) VALUES (?, ?, ?, 0)",
-            (req.username, req.email, pw_hash)
-        )
-        db.commit()
-        user_id = cursor.lastrowid
-        try:
-            send_verification_email(user_id, req.username, req.email)
-        except: pass # Email göndərilməsə belə qeydiyyatı bitir
-        return {"message": "Qeydiyyat uğurlu! E-poçtunuzu yoxlayın."}
-    except sqlite3.IntegrityError:
-        raise HTTPException(409, "Bu istifadəçi adı və ya e-poçt artıq mövcuddur.")
 
 @app.post("/auth/login")
 async def login(req: LoginRequest, db: sqlite3.Connection = Depends(get_db)):
     user = db.execute("SELECT * FROM users WHERE username = ?", (req.username,)).fetchone()
     if not user or not bcrypt.checkpw(req.password.encode(), user["password_h"].encode()):
-        raise HTTPException(401, "İstifadəçi adı və ya şifrə yanlışdır.")
+        raise HTTPException(401, "Məlumatlar yanlışdır.")
     
-    if not user["is_verified"] and not user["is_admin"]:
-        raise HTTPException(403, "Zəhmət olmasa əvvəlcə emailinizi təsdiqləyin.")
-
     token = create_token(user["id"], user["username"], user["plan"], bool(user["is_admin"]))
     return {"access_token": token, "token_type": "bearer", "user": dict(user)}
 
@@ -175,41 +154,30 @@ async def chat_send(req: dict, token: HTTPAuthorizationCredentials = Depends(sec
         payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=[ALGORITHM])
         user_id = payload["sub"]
     except:
-        raise HTTPException(401, "Token etibarsızdır")
+        raise HTTPException(401, "Token xətası")
     
     user_msg = req.get("message", "").strip()
     session_id = req.get("session_id") or str(uuid.uuid4())
 
-    if not user_msg:
-        raise HTTPException(400, "Mesaj boş ola bilməz")
-
-    # ── Gemini API İnteqrasiyası ──
     if not GEMINI_API_KEY:
-        ai_res = "Sistem Xətası: Gemini API açarı Koyeb-də tapılmadı."
+        ai_res = "Sistem Xətası: API Key serverdə tapılmadı (Koyeb settings-ə bax)."
     else:
         async with httpx.AsyncClient(timeout=60.0) as client:
             gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
             
-            # AI-ın "beynini" açan kreativ ayarlar:
             gemini_payload = {
-                "contents": [{"parts": [{"text": f"{ARN_SYSTEM_PROMPT}\n\nİstifadəçi sualı: {user_msg}"}]}],
+                "contents": [{"parts": [{"text": f"{ARN_SYSTEM_PROMPT}\n\nİstifadəçi: {user_msg}"}]}],
                 "generationConfig": {
-                    "temperature": 0.85, # İnsani və geniş cavablar üçün
-                    "maxOutputTokens": 2048,
-                    "topP": 0.95
+                    "temperature": 0.85, # İnsani olması üçün
+                    "maxOutputTokens": 2048
                 }
             }
             
             resp = await client.post(gemini_url, json=gemini_payload)
-            
             if resp.status_code == 200:
-                result = resp.json()
-                try:
-                    ai_res = result['candidates'][0]['content']['parts'][0]['text']
-                except:
-                    ai_res = "AI cavab hazırlayarkən xəta baş verdi."
+                ai_res = resp.json()['candidates'][0]['content']['parts'][0]['text']
             else:
-                ai_res = f"API Xətası (Kod: {resp.status_code}). Zəhmət olmasa biraz gözləyin."
+                ai_res = f"AI Xətası: API cavab vermədi (Kod: {resp.status_code})"
 
     # Bazaya qeyd etmə
     db.execute("INSERT OR IGNORE INTO chat_sessions (id, user_id, title) VALUES (?, ?, ?)", (session_id, user_id, user_msg[:40]))
@@ -221,4 +189,4 @@ async def chat_send(req: dict, token: HTTPAuthorizationCredentials = Depends(sec
 
 @app.get("/health")
 def health():
-    return {"status": "online", "server": "ARN-AI-Final", "version": "1.3.1"}
+    return {"status": "online", "key_status": "OK" if GEMINI_API_KEY else "MISSING"}
