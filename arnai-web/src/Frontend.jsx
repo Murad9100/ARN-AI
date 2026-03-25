@@ -464,54 +464,78 @@ function SimModal({ code, onClose }) {
 }
 
 // ─── UPGRADE MODAL ────────────────────────────────────────────────────────────
+// ─── UPGRADE MODAL (Nexus Edition) ────────────────────────────────────────────
 function UpgradeModal({ onClose }) {
   const plans = [
     { p: "PRO", price: "₼19/ay", feats: ["Limitsiz sorğu", "Prioritet cavab", "Bütün alətlər"] },
     { p: "MAX", price: "₼49/ay", feats: ["PRO + hamısı", "API girişi", "Şəxsi agent"] },
   ];
+
   return (
     <div style={{
       position: "fixed", inset: 0, background: "rgba(0,0,0,0.95)",
       display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000,
     }}>
-      <div style={{ ...S.cardRed, width: 500, textAlign: "center" }}>
-        <div style={{ fontSize: 32, marginBottom: 8, color: C.red }}>⬡</div>
-        <h2 style={{ fontFamily: F.display, color: C.red, letterSpacing: 3, marginBottom: 8, fontSize: 22 }}>
+      {/* Scanline effekti modalın daxilində də olsun */}
+      <div className="scanline"></div>
+
+      <div className="cyber-panel" style={{ width: 550, textAlign: "center", boxShadow: `0 0 50px rgba(255,0,51,0.2)` }}>
+        <div className="neon-red" style={{ fontSize: 40, marginBottom: 10 }}>⬡</div>
+        
+        <h2 className="glitch-text" style={{ fontFamily: "Orbitron", color: "#ff0033", letterSpacing: 4, marginBottom: 10, fontSize: 26 }}>
           LİMİT AŞILDI
         </h2>
-        <p style={{ color: C.textMid, fontSize: 14, marginBottom: 24, fontFamily: F.ui }}>
-          Pulsuz planda gündə 3 sorğu limitinə çatdınız.
+        
+        <p style={{ color: "#666", fontSize: 14, marginBottom: 24, fontFamily: "Barlow", letterSpacing: 1 }}>
+          Sistem xətası: Pulsuz planda gündəlik 3 sorğu limitinə çatdınız. Girişi bərpa etmək üçün plan seçin.
         </p>
-        <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
+
+        <div style={{ display: "flex", gap: 15, marginBottom: 24 }}>
           {plans.map(pl => (
             <div key={pl.p} style={{
-              flex: 1, border: `1px solid ${pl.p === "MAX" ? C.red : C.border2}`,
-              padding: 20, background: "#0a0a0a",
+              flex: 1, 
+              border: `1px solid ${pl.p === "MAX" ? "#ff0033" : "#1a1a1a"}`,
+              padding: 20, 
+              background: "#050505",
+              position: "relative"
             }}>
-              <div style={{ fontFamily: F.display, color: planColor(pl.p), fontWeight: 900, fontSize: 22, letterSpacing: 3 }}>
+              <div style={{ fontFamily: "Orbitron", color: pl.p === "MAX" ? "#ff0033" : "#e8e8e8", fontWeight: 900, fontSize: 24, letterSpacing: 3 }}>
                 {pl.p}
               </div>
-              <div style={{ fontFamily: F.ui, color: C.text, fontSize: 22, margin: "10px 0", fontWeight: 600 }}>
+              
+              <div style={{ fontFamily: "Barlow Condensed", color: "#fff", fontSize: 24, margin: "12px 0", fontWeight: 700 }}>
                 {pl.price}
               </div>
-              {pl.feats.map(f => (
-                <div key={f} style={{ fontFamily: F.ui, color: C.textMid, fontSize: 12, margin: "4px 0" }}>
-                  ✓ {f}
-                </div>
-              ))}
-              <button style={{ ...S.btnRed, width: "100%", marginTop: 14, fontSize: 13 }}>SEÇ</button>
+
+              <div style={{ textAlign: "left", marginBottom: 20 }}>
+                {pl.feats.map(f => (
+                  <div key={f} style={{ fontFamily: "Barlow", color: "#666", fontSize: 13, margin: "6px 0" }}>
+                    <span style={{ color: "#ff0033", marginRight: 5 }}>[✓]</span> {f}
+                  </div>
+                ))}
+              </div>
+
+              {/* BİZİM MOŞNU DÜYMƏ */}
+              <button 
+                className="arn-button" 
+                style={{ width: "100%", fontSize: 13 }}
+              >
+                UPGRADE_NOW
+              </button>
             </div>
           ))}
         </div>
+
         <button onClick={onClose} style={{
-          color: C.textDim, background: "none", border: "none", cursor: "pointer",
-          fontFamily: F.display, fontSize: 13, letterSpacing: 1,
-        }}>Pulsuz davam et →</button>
+          color: "#444", background: "none", border: "none", cursor: "pointer",
+          fontFamily: "Orbitron", fontSize: 11, letterSpacing: 2, textTransform: "uppercase"
+        }}>
+          Sistemə geri dön →
+        </button>
       </div>
     </div>
   );
 }
-
 // ─── RIGHT PANEL ──────────────────────────────────────────────────────────────
 function RightPanel({ user }) {
   const [tick, setTick] = useState(0);
