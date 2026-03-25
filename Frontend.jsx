@@ -1466,6 +1466,7 @@ function ResetPassword({ onSuccess }) {
 }
 
 // ─── AUTH PAGE (Login + Register) ─────────────────────────────────────────────
+// ─── AUTH PAGE (Real Login & Register - Təmizlənmiş) ──────────────────────────
 function AuthPage({ setView, setUser }) {
   const [mode, setMode] = useState("login");      // login | register
   const [subView, setSubView] = useState("main"); // main | forgot | pending
@@ -1480,15 +1481,27 @@ function AuthPage({ setView, setUser }) {
   const up = (k) => (e) => setForm(p => ({ ...p, [k]: e.target.value }));
 
   const submit = async () => {
-    setError(""); setLoading(true);
+    if (!form.username || !form.password) {
+      setError("İstifadəçi adı və şifrə mütləqdir.");
+      return;
+    }
+
+    setError(""); 
+    setLoading(true);
 
     const endpoint = mode === "login" ? "/auth/login" : "/auth/register";
+    
     try {
       const res = await fetch(`${API_BASE}${endpoint}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: form.username, email: form.email, password: form.password }),
+        body: JSON.stringify({ 
+          username: form.username, 
+          email: mode === "register" ? form.email : undefined, 
+          password: form.password 
+        }),
       });
+      
       const data = await res.json();
 
       if (res.ok) {
@@ -1496,6 +1509,7 @@ function AuthPage({ setView, setUser }) {
           setPendingEmail(form.email);
           setSubView("pending");
         } else {
+          // Real Giriş Uğurludur
           localStorage.setItem("arn_token", data.access_token);
           setUser({
             username: data.user.username,
@@ -1506,21 +1520,13 @@ function AuthPage({ setView, setUser }) {
           setView(data.user.is_admin ? "admin" : "dashboard");
         }
       } else {
-        setError(data.detail || "Xəta baş verdi");
-        setLoading(false);
-        return;
+        setError(data.detail || "Giriş rədd edildi.");
       }
-    } catch {
-      // Mock auth fallback (no backend running)
-      await new Promise(r => setTimeout(r, 800));
-      if (!form.username || !form.password) { setError("Bütün sahələri doldurun."); setLoading(false); return; }
-      if (mode === "register" && form.password.length < 6) { setError("Şifrə ən az 6 simvol olmalıdır."); setLoading(false); return; }
-      const isAdmin = form.username === "admin" || form.username === "m_safarov";
-      setUser({ username: form.username, plan: isAdmin ? "MAX" : "FREE", isAdmin, reqsToday: 0 });
-      setView(isAdmin && form.username === "admin" ? "admin" : "dashboard");
+    } catch (err) {
+      setError("Serverlə əlaqə qurula bilmədi. Koyeb API-nı yoxlayın.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   };
 
   return (
@@ -1536,10 +1542,10 @@ function AuthPage({ setView, setUser }) {
             <label style={{ fontFamily: F.display, fontSize: "10px", color: C.textDim, letterSpacing: 2.5, display: "block", marginBottom: 6, fontWeight: 600 }}>
               İSTİFADƏÇİ ADI
             </label>
-            <input value={form.username} onChange={up("username")} style={S.input} placeholder="username" />
+            <input value={form.username} onChange={up("username")} style={S.input} placeholder="m_seferov" />
           </div>
 
-          {/* Email (register only) */}
+          {/* Email (Sadece Qeydiyyatda) */}
           {mode === "register" && (
             <div>
               <label style={{ fontFamily: F.display, fontSize: "10px", color: C.textDim, letterSpacing: 2.5, display: "block", marginBottom: 6, fontWeight: 600 }}>
@@ -1570,7 +1576,7 @@ function AuthPage({ setView, setUser }) {
           </div>
 
           <button onClick={submit} disabled={loading} style={{ ...S.btnRed, textAlign: "center", marginTop: 6, opacity: loading ? 0.7 : 1, width: "100%" }}>
-            {loading ? "YOXLANILlR..." : mode === "login" ? "DAXİL OL" : "QEYDIYYAT"}
+            {loading ? "GÖZLƏYİN..." : mode === "login" ? "DAXİL OL" : "QEYDIYYAT"}
           </button>
         </div>
 
@@ -1583,22 +1589,10 @@ function AuthPage({ setView, setUser }) {
             {mode === "login" ? "Hesabınız yoxdur? Qeydiyyat →" : "Artıq hesabınız var? Daxil olun →"}
           </button>
         </div>
-
-        {/* Demo logins */}
-        <div style={{ marginTop: 24, paddingTop: 18, borderTop: `1px solid ${C.border}`, display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
-          {[
-            ["Demo: Admin",   { username: "admin",    email: "", password: "admin123" }],
-            ["Demo: PRO",     { username: "m_safarov",email: "", password: "pass123" }],
-            ["Demo: Free",    { username: "user_free", email: "", password: "pass123" }],
-          ].map(([l, f]) => (
-            <button key={l} onClick={() => setForm(f)} style={{ ...S.btnDark, fontSize: "10px", padding: "4px 10px" }}>{l}</button>
-          ))}
-        </div>
       </div>
     </CenteredPage>
   );
 }
-
 // ─── APP ROOT ─────────────────────────────────────────────────────────────────
 export default function App() {
   const [view, setView] = useState("login"); // login | dashboard | admin | verify | reset
