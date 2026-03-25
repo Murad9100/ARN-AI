@@ -1584,20 +1584,7 @@ function AuthPage({ setView, setUser }) {
           </button>
         </div>
 
-        {/* Demo logins */}
-        <div style={{ marginTop: 24, paddingTop: 18, borderTop: `1px solid ${C.border}`, display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
-          {[
-            ["Demo: Admin",   { username: "admin",    email: "", password: "admin123" }],
-            ["Demo: PRO",     { username: "m_safarov",email: "", password: "pass123" }],
-            ["Demo: Free",    { username: "user_free", email: "", password: "pass123" }],
-          ].map(([l, f]) => (
-            <button key={l} onClick={() => setForm(f)} style={{ ...S.btnDark, fontSize: "10px", padding: "4px 10px" }}>{l}</button>
-          ))}
-        </div>
-      </div>
-    </CenteredPage>
-  );
-}
+      
 
 // ─── APP ROOT ─────────────────────────────────────────────────────────────────
 export default function App() {
