@@ -8,3 +8,10 @@ cryptography
 python-multipart
 pyjwt
 python-dotenv
+fastapi
+uvicorn
+httpx
+bcrypt
+pyjwt
+cryptography
+python-multipart
