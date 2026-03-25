@@ -1,29 +1,8 @@
-/**
- * ARN AI — Full-Stack SaaS Frontend  (Birləşdirilmiş v2)
- * Stack : React + Inline Styles
- * Views : Login · Register · ForgotPassword · VerifyEmail · Dashboard · Admin
- * Fonts : Orbitron (brand) · Barlow Condensed (display) · JetBrains Mono (terminal) · Barlow (UI)
- */
-
-import { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from 'react';
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-// 1. API linkini bura yapışdır (axırda / olmasın)
 const API_BASE = "https://ill-madelyn-arnai-ce79d1d6.koyeb.app";
 
-// 2. Mesaj göndərmə funksiyasında fetch-i belə yaz:
-const response = await fetch(`${API_BASE}/chat/send`, {
-    method: "POST",
-    headers: {
-        "Content-Type": "application/json",
-        // Əgər login sistemi istifadə edirsənsə, bura Token əlavə et:
-        // "Authorization": `Bearer ${your_token_here}`
-    },
-    body: JSON.stringify({
-        message: userInput, // Sənin yazdığın mesaj
-        tool: "chat"
-    }),
-});
 // ─── DESIGN TOKENS ────────────────────────────────────────────────────────────
 const C = {
   bg:       "#050505",
@@ -51,7 +30,6 @@ const F = {
 
 // ─── SHARED STYLES ────────────────────────────────────────────────────────────
 const S = {
-  // Input field
   input: {
     background: "#0a0a0a",
     border: "1px solid #1e1e1e",
@@ -67,7 +45,6 @@ const S = {
     boxSizing: "border-box",
     letterSpacing: "0.01em",
   },
-  // Primary red button
   btnRed: {
     background: C.red,
     color: "#fff",
@@ -81,7 +58,6 @@ const S = {
     textTransform: "uppercase",
     transition: "all 0.18s",
   },
-  // Ghost button
   btnGhost: {
     background: "transparent",
     color: C.red,
@@ -95,80 +71,9 @@ const S = {
     textTransform: "uppercase",
     transition: "all 0.18s",
   },
-  // Dark neutral button
-  btnDark: {
-    background: "#111",
-    color: C.textMid,
-    border: `1px solid ${C.border2}`,
-    padding: "8px 14px",
-    cursor: "pointer",
-    fontFamily: F.display,
-    fontWeight: 600,
-    fontSize: "12px",
-    letterSpacing: "1.5px",
-    textTransform: "uppercase",
-    transition: "all 0.18s",
-  },
   card:    { background: C.surface, border: `1px solid ${C.border}`, padding: "20px" },
   cardRed: { background: C.surface, border: `1px solid ${C.red}`, padding: "20px", boxShadow: `0 0 40px ${C.redGlow2}` },
 };
-
-// ─── MOCK DATA ────────────────────────────────────────────────────────────────
-const MOCK_THREATS = [
-  { id: 1, level: "KRİTİK", msg: "CVE-2025-0432 · Apache HTTP Server RCE",      time: "00:12", country: "CN" },
-  { id: 2, level: "YÜKSƏK", msg: "CVE-2025-1187 · OpenSSL Buffer Overflow",      time: "00:34", country: "RU" },
-  { id: 3, level: "ORTA",   msg: "CVE-2025-2291 · WordPress SQLi Plugin",        time: "01:02", country: "BR" },
-  { id: 4, level: "KRİTİK", msg: "CVE-2025-3314 · Linux Kernel Priv-Esc",       time: "01:45", country: "IR" },
-  { id: 5, level: "YÜKSƏK", msg: "CVE-2025-4007 · Fortinet Auth Bypass",        time: "02:11", country: "KP" },
-  { id: 6, level: "ORTA",   msg: "CVE-2025-4489 · Node.js Prototype Pollution",  time: "02:33", country: "US" },
-];
-
-const MOCK_USERS = [
-  { id: 1, username: "m_safarov",   email: "m@aztu.edu.az", plan: "PRO",  status: "aktiv", reqs: 142 },
-  { id: 2, username: "r_bekiyev",   email: "r@mail.az",     plan: "MAX",  status: "aktiv", reqs: 399 },
-  { id: 3, username: "test_user_1", email: "t1@mail.az",    plan: "FREE", status: "aktiv", reqs: 3   },
-  { id: 4, username: "hacker_x",    email: "hx@dark.az",    plan: "FREE", status: "banlı", reqs: 0   },
-  { id: 5, username: "aytac_h",     email: "a@aztu.edu.az", plan: "PRO",  status: "aktiv", reqs: 87  },
-];
-
-const INITIAL_HISTORY = [
-  {
-    id: "h1",
-    title: "Nmap Skan Analizi",
-    tool: "Port Skaner",
-    date: "Bugün",
-    msgs: [
-      { role: "user", content: "192.168.1.0/24 şəbəkəsini skan et." },
-      {
-        role: "assistant",
-        content: `## Nmap Skan Nəticəsi
-
-**Hədəf:** \`192.168.1.0/24\`  **Metod:** SYN Stealth (-sS)
-
-\`\`\`bash
-Host: 192.168.1.1   Ports: 22/open/tcp, 80/open/tcp, 443/open/tcp
-Host: 192.168.1.10  Ports: 3306/open/tcp, 8080/open/tcp
-Host: 192.168.1.15  Ports: 21/open/tcp, 23/open/tcp
-\`\`\`
-
-| Host | Port | Servis | Risk |
-|------|------|--------|------|
-| .1   | 22   | SSH    | Orta |
-| .10  | 3306 | MySQL  | Yüksək |
-| .15  | 23   | Telnet | **KRİTİK** |
-
-> ⚠️ **XƏBƏRDARLIQ:** Telnet (port 23) şifrəsiz protokoldur. Dərhal bağlanmalıdır.`,
-      },
-    ],
-  },
-];
-
-const TOOLS = [
-  { id: "chat",     label: "AI Pentest Köməkçisi", icon: "◈" },
-  { id: "payload",  label: "Payload Generator",    icon: "⬡" },
-  { id: "portscan", label: "Port Skaner Analizi",  icon: "◎" },
-  { id: "webex",    label: "Web Exploit Helper",   icon: "⬢" },
-];
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function planColor(plan) {
@@ -183,20 +88,29 @@ function levelColor(level) {
   return "#777";
 }
 
-function label(text, style = {}) {
-  return (
-    <span style={{
-      fontFamily: F.display,
-      fontSize: "10px",
-      fontWeight: 700,
-      letterSpacing: "2.5px",
-      textTransform: "uppercase",
-      color: C.textDim,
-      ...style,
-    }}>{text}</span>
-  );
-}
+// ─── COMPONENTS ───────────────────────────────────────────────────────────────
+const CenteredPage = ({ children }) => (
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", padding: 20 }}>
+    {children}
+  </div>
+);
 
+const ErrBox = ({ msg }) => msg ? (
+  <div style={{ background: "rgba(255,0,51,0.1)", border: `1px solid ${C.red}`, color: C.red, padding: "10px 14px", fontSize: "12px", marginBottom: 16, fontFamily: F.mono }}>
+    [!] ERROR: {msg.toUpperCase()}
+  </div>
+) : null;
+
+const AuthLogo = ({ subtitle }) => (
+  <div style={{ marginBottom: 30, textAlign: "center" }}>
+    <h1 className="arn-glitch" data-text="ARN AI" style={{ fontFamily: F.brand, fontSize: "42px", fontWeight: 900, color: "#fff", letterSpacing: "4px" }}>
+      ARN AI
+    </h1>
+    <div style={{ fontFamily: F.display, fontSize: "11px", color: C.red, letterSpacing: "4px", marginTop: 4, fontWeight: 700 }}>
+      {subtitle}
+    </div>
+  </div>
+);
 // ─── LOGO ─────────────────────────────────────────────────────────────────────
 function ArnLogo({ size = 28, showTag = true }) {
   // Sidebar / header mode: horizontal compact layout
