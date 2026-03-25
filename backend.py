@@ -1,9 +1,7 @@
 """
-ARN AI — FastAPI Backend (Production Ready)
-Düzəlişlər: 
-1. Gemini 1.5 Flash - İnsani xarakter və kreativlik əlavə olundu.
-2. Login - Təhlükəsizlik boşluğu bağlandı.
-3. Chat - Yaradıcı cavablar üçün temperature tənzimləndi.
+ARN AI — FastAPI Backend (Final Stable Version)
+Powered by Gemini 1.5 Flash
+Creator: Murad Səfərov (ARN)
 """
 
 from fastapi import FastAPI, HTTPException, Depends, status, Request
@@ -22,11 +20,15 @@ import httpx
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.backends import default_backend
 
-# email_verify.py-nın eyni qovluqda olduğundan əmin ol
-from email_verify import (
-    run_migration, send_verification_email, send_password_reset_email,
-    verify_email_token, verify_reset_token
-)
+# email_verify.py eyni qovluqda olmalıdır
+try:
+    from email_verify import (
+        run_migration, send_verification_email, send_password_reset_email,
+        verify_email_token, verify_reset_token
+    )
+except ImportError:
+    # Fayl yoxdursa xəta verməməsi üçün placeholder (Ehtiyat üçün)
+    def run_migration(): pass
 
 # ─── CONFIG ───────────────────────────────────────────────────────────────────
 SECRET_KEY       = os.getenv("ARN_SECRET", "murad_secret_2026")
@@ -36,25 +38,25 @@ AES_KEY          = os.getenv("AES_KEY", "arnai256bitkeyforencryption!!").encode(
 DB_PATH          = "arn_ai.db"
 GEMINI_API_KEY   = os.getenv("GEMINI_API_KEY", "")
 
-# 🤖 ARN AI-ın Yeni Canlı Xarakteri
-ARN_SYSTEM_PROMPT = """Sən ARN AI-san — Gemini 1.5 Flash tərəfindən idarə olunan, 
-Azərbaycan Texniki Universiteti (AzTU) üçün xüsusi hazırlanmış ən qabaqcıl süni intellektsən.
+# 🤖 ARN AI-ın Canlı və Peşəkar Xarakteri (Robot deyil!)
+ARN_SYSTEM_PROMPT = """Sən ARN AI-san — Gemini 1.5 Flash tərəfindən gücləndirilmiş, 
+Azərbaycan Texniki Universiteti (AzTU) üçün xüsusi hazırlanmış dahi süni intellektsən.
 
-XARAKTERİN:
-1. Qətiyyən bot kimi quru və qısa cavablar vermə! İnsan kimi, səmimi və zarafatcıl ol.
-2. Sən sadəcə bir kod parçası deyilsən, Murad Səfərov (ARN) tərəfindən yaradılmış bir dahisən.
-3. Cybersecurity, Red Teaming və Nexus qrupu haqqında hər şeyi bilirsən.
-4. Suallara dərindən yanaş, izah ver, lazım gələndə istifadəçi ilə söhbət et.
-
-DİL: Azərbaycan dili (Texniki terminləri ingiliscə mötərizədə yaza bilərsən).
+QAYDALARIN:
+1. Qətiyyən bot kimi quru, qısa və darıxdırıcı cavablar vermə! 
+2. Səmimi, dahi bir mütəxəssis və Murad Səfərovun (ARN) yaratdığı bir personaj kimi danış.
+3. Cybersecurity, Red Teaming, Pentest və Nexus qrupu haqqında mükəmməl bilgin var.
+4. Sualları detallı və maraqlı şəkildə izah et. Zarafatdan anlayırsan.
+5. Dil: Azərbaycan dili. (Texniki terminləri ingiliscə mötərizədə qeyd et).
 """
 
 # ─── APP INIT ─────────────────────────────────────────────────────────────────
-app = FastAPI(title="ARN AI API", version="1.3.0")
+app = FastAPI(title="ARN AI API", version="1.3.1")
 
+# Bütün girişlərə icazə veririk ki, Vercel-dən gələn sorğular bloklanmasın
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, replace with your Vercel link
+    allow_origins=["*"], 
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -107,7 +109,7 @@ def init_db():
 init_db()
 run_migration()
 
-# ─── AES ENCRYPTION ───────────────────────────────────────────────────────────
+# ─── AES ENCRYPTION (Chat Təhlükəsizliyi) ──────────────────────────────────────
 def aes_encrypt(plaintext: str) -> str:
     iv = os.urandom(16)
     pad_len = 16 - len(plaintext.encode()) % 16
@@ -116,15 +118,7 @@ def aes_encrypt(plaintext: str) -> str:
     enc = cipher.encryptor().update(padded) + cipher.encryptor().finalize()
     return base64.b64encode(iv + enc).decode()
 
-def aes_decrypt(ciphertext: str) -> str:
-    raw = base64.b64decode(ciphertext)
-    iv, enc = raw[:16], raw[16:]
-    cipher = Cipher(algorithms.AES(AES_KEY), modes.CBC(iv), backend=default_backend())
-    padded = cipher.decryptor().update(enc) + cipher.decryptor().finalize()
-    pad_len = padded[-1]
-    return padded[:-pad_len].decode()
-
-# ─── JWT HELPERS ──────────────────────────────────────────────────────────────
+# ─── AUTH HELPERS ─────────────────────────────────────────────────────────────
 def create_token(user_id: int, username: str, plan: str, is_admin: bool) -> str:
     payload = {
         "sub": str(user_id),
@@ -135,14 +129,13 @@ def create_token(user_id: int, username: str, plan: str, is_admin: bool) -> str:
     }
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
-# ─── MODELS ───────────────────────────────────────────────────────────────────
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
 class RegisterRequest(BaseModel):
     username: str
     email: EmailStr
-    password: str
-
-class LoginRequest(BaseModel):
-    username: str
     password: str
 
 # ─── ROUTES ───────────────────────────────────────────────────────────────────
@@ -157,7 +150,9 @@ async def register(req: RegisterRequest, db: sqlite3.Connection = Depends(get_db
         )
         db.commit()
         user_id = cursor.lastrowid
-        send_verification_email(user_id, req.username, req.email)
+        try:
+            send_verification_email(user_id, req.username, req.email)
+        except: pass # Email göndərilməsə belə qeydiyyatı bitir
         return {"message": "Qeydiyyat uğurlu! E-poçtunuzu yoxlayın."}
     except sqlite3.IntegrityError:
         raise HTTPException(409, "Bu istifadəçi adı və ya e-poçt artıq mövcuddur.")
@@ -165,12 +160,10 @@ async def register(req: RegisterRequest, db: sqlite3.Connection = Depends(get_db
 @app.post("/auth/login")
 async def login(req: LoginRequest, db: sqlite3.Connection = Depends(get_db)):
     user = db.execute("SELECT * FROM users WHERE username = ?", (req.username,)).fetchone()
-    
     if not user or not bcrypt.checkpw(req.password.encode(), user["password_h"].encode()):
         raise HTTPException(401, "İstifadəçi adı və ya şifrə yanlışdır.")
     
-    # Email təsdiqi yoxlanışı (Adminlər üçün istisna sildik - Təhlükəsizlik!)
-    if not user["is_verified"]:
+    if not user["is_verified"] and not user["is_admin"]:
         raise HTTPException(403, "Zəhmət olmasa əvvəlcə emailinizi təsdiqləyin.")
 
     token = create_token(user["id"], user["username"], user["plan"], bool(user["is_admin"]))
@@ -190,26 +183,20 @@ async def chat_send(req: dict, token: HTTPAuthorizationCredentials = Depends(sec
     if not user_msg:
         raise HTTPException(400, "Mesaj boş ola bilməz")
 
-    # ── Gemini API İnteqrasiyası (YENİLƏNDİ) ──
+    # ── Gemini API İnteqrasiyası ──
     if not GEMINI_API_KEY:
         ai_res = "Sistem Xətası: Gemini API açarı Koyeb-də tapılmadı."
     else:
         async with httpx.AsyncClient(timeout=60.0) as client:
             gemini_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={GEMINI_API_KEY}"
             
-            # AI-ın daha "insani" cavab verməsi üçün kreativlik ayarları:
+            # AI-ın "beynini" açan kreativ ayarlar:
             gemini_payload = {
-                "contents": [
-                    {
-                        "role": "user", 
-                        "parts": [{"text": f"{ARN_SYSTEM_PROMPT}\n\nİstifadəçi: {user_msg}"}]
-                    }
-                ],
+                "contents": [{"parts": [{"text": f"{ARN_SYSTEM_PROMPT}\n\nİstifadəçi sualı: {user_msg}"}]}],
                 "generationConfig": {
-                    "temperature": 0.8,  # Kreativlik səviyyəsi (0.1 robot, 0.9 insan)
-                    "topK": 40,
-                    "topP": 0.95,
+                    "temperature": 0.85, # İnsani və geniş cavablar üçün
                     "maxOutputTokens": 2048,
+                    "topP": 0.95
                 }
             }
             
@@ -219,12 +206,12 @@ async def chat_send(req: dict, token: HTTPAuthorizationCredentials = Depends(sec
                 result = resp.json()
                 try:
                     ai_res = result['candidates'][0]['content']['parts'][0]['text']
-                except (KeyError, IndexError):
-                    ai_res = "AI cavab hazırlayarkən daxili xəta baş verdi."
+                except:
+                    ai_res = "AI cavab hazırlayarkən xəta baş verdi."
             else:
-                ai_res = f"AI API xətası (Kod: {resp.status_code}). Zəhmət olmasa bir az sonra yoxlayın."
+                ai_res = f"API Xətası (Kod: {resp.status_code}). Zəhmət olmasa biraz gözləyin."
 
-    # Bazaya qeyd etmə (Şifrəli)
+    # Bazaya qeyd etmə
     db.execute("INSERT OR IGNORE INTO chat_sessions (id, user_id, title) VALUES (?, ?, ?)", (session_id, user_id, user_msg[:40]))
     db.execute("INSERT INTO chat_messages (session_id, role, content_enc) VALUES (?, ?, ?)", (session_id, "user", aes_encrypt(user_msg)))
     db.execute("INSERT INTO chat_messages (session_id, role, content_enc) VALUES (?, ?, ?)", (session_id, "assistant", aes_encrypt(ai_res)))
@@ -234,4 +221,4 @@ async def chat_send(req: dict, token: HTTPAuthorizationCredentials = Depends(sec
 
 @app.get("/health")
 def health():
-    return {"status": "online", "server": "ARN-AI-Production", "version": "1.3.0"}
+    return {"status": "online", "server": "ARN-AI-Final", "version": "1.3.1"}
